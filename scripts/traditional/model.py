@@ -6,6 +6,7 @@ import random
 import numpy as np
 import sys
 import os
+import json
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.ensemble import RandomForestClassifier
@@ -29,6 +30,8 @@ class HMMAdvisor:
         """Sets up the advisor with dataset."""
         # Load data
         self.data = load_data()
+        
+        print("Available columns:", self.data.columns.tolist())
 
         # Our states and categories
         self.emotions = ['anxiety', 'depression', 'sadness', 'anger', 'fear', 'happiness']
@@ -55,49 +58,64 @@ class HMMAdvisor:
 
     def _train_classifiers(self):
         """Trains our emotion and problem classifiers from the dataset."""
-        # Use exact column names from the dataset
+        # Convert the JSON in 'text' column to actual data
+        parsed_data = []
+        for _, row in self.data.iterrows():
+            try:
+                # Parse the JSON string into a dictionary
+                if 'text' in row:
+                    json_data = json.loads(row['text'])
+                    parsed_data.append(json_data)
+            except (json.JSONDecodeError, TypeError, KeyError) as e:
+                print(f"Error parsing row: {e}")
+                continue
+        
+        # Create a new DataFrame with the parsed data
+        parsed_df = pd.DataFrame(parsed_data)
+        print("Parsed columns:", parsed_df.columns.tolist())
+        
+        # Now we can access the actual columns
         situation_col = 'situation'
         emotion_col = 'emotion_type'
         problem_col = 'problem_type'
         
         # For emotion classifier
-        X_emotion = self.data[situation_col].astype(str).fillna('')
-        y_emotion = self.data[emotion_col].astype(str).fillna('unknown')
-
+        X_emotion = parsed_df[situation_col].astype(str).fillna('') if situation_col in parsed_df.columns else pd.Series([''] * len(parsed_df))
+        y_emotion = parsed_df[emotion_col].astype(str).fillna('unknown') if emotion_col in parsed_df.columns else pd.Series(['unknown'] * len(parsed_df))
+        
         # Clean up the data - only use stuff we have labels for
         mask_emotion = y_emotion.isin(self.emotions)
         X_emotion_valid = X_emotion[mask_emotion]
         y_emotion_valid = y_emotion[mask_emotion]
         
         print(f"Training emotion classifier with {len(X_emotion_valid)} samples")
-
+        
         # TF-IDF for the emotion classifier
         self.emotion_vectorizer = TfidfVectorizer(max_features=3000)
         X_emotion_tfidf = self.emotion_vectorizer.fit_transform(X_emotion_valid)
-
+        
         # NB works pretty well for text
         self.emotion_classifier = MultinomialNB()
         self.emotion_classifier.fit(X_emotion_tfidf, y_emotion_valid)
-
+        
         # Now for problem classifier
-        X_problem = self.data[situation_col].astype(str).fillna('')
-        y_problem = self.data[problem_col].astype(str).fillna('unknown')
-
+        X_problem = parsed_df[situation_col].astype(str).fillna('') if situation_col in parsed_df.columns else pd.Series([''] * len(parsed_df))
+        y_problem = parsed_df[problem_col].astype(str).fillna('unknown') if problem_col in parsed_df.columns else pd.Series(['unknown'] * len(parsed_df))
+        
         # Same cleaning approach
         mask_problem = y_problem.isin(self.problems)
         X_problem_valid = X_problem[mask_problem]
         y_problem_valid = y_problem[mask_problem]
         
         print(f"Training problem classifier with {len(X_problem_valid)} samples")
-
+        
         # TF-IDF again
         self.problem_vectorizer = TfidfVectorizer(max_features=3000)
         X_problem_tfidf = self.problem_vectorizer.fit_transform(X_problem_valid)
-
+        
         # RF usually beats NB for this task in my testing
         self.problem_classifier = RandomForestClassifier(n_estimators=100)
         self.problem_classifier.fit(X_problem_tfidf, y_problem_valid)
-        
 
     def _build_transition_matrix(self):
         """Creates transition probs between emotional states."""
@@ -553,8 +571,7 @@ class HMMAdvisor:
 
 # Interactive testing
 def run_advisor():
-    """Fire up an interactive session for testing."""
-    print("Starting up...")
+    """Starting an interactive session for testing"""
     advisor = HMMAdvisor()
 
     print("\n=== HMM Advisor ===")
@@ -565,7 +582,7 @@ def run_advisor():
         user_input = input("You: ")
 
         if user_input.lower() in ['exit', 'quit', 'bye']:
-            print("AI: Take care. Catch you later.")
+            print("AI: Take care. Catch you later")
             break
 
         response, debug_info = advisor.respond(user_input)
