@@ -18,7 +18,7 @@ def main():
     example_prompt = [
         {
             "role": "system",
-            "content": "You are a therapist specialized the cognitive behavioral therapy."
+            "content": "You are a therapist specialized in the cognitive behavioral therapy."
         },
         {
             "role": "user",
