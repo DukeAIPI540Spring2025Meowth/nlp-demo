@@ -172,3 +172,13 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Environment variables
+.env
+
+# Project data and model files
+scripts/deep/esconv/
+scripts/deep/llama-3.2-3b-instruct/
+scripts/deep/tuned_model/
+scripts/deep/conversion_dir/
+scripts/deep/llama.cpp/
