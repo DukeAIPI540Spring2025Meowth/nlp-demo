@@ -1,9 +1,14 @@
 from llama_cpp import Llama
 from termcolor import colored
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def main():
-    llm = Llama(
-        model_path="conversion_dir/model-q5_k_m.gguf",
+    llm = Llama.from_pretrained(
+        repo_id="haran-nallasivan/meowth-nlp-demo-0.1_llama-3.2-3b-instruct_q5_k_m_gguf",
+        filename="model.gguf",
+        verbose=False,
         n_ctx=2048, 
         n_threads=8,
         n_gpu_layers=0,  # Disable Metal GPU acceleration
