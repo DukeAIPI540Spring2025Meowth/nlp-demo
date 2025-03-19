@@ -1,5 +1,5 @@
 #!/bin/bash
-if llama.cpp directory doesn't exist, clone it
+# if llama.cpp directory doesn't exist, clone it
 if [ ! -d "llama.cpp" ]; then
     git clone https://github.com/ggerganov/llama.cpp &&
     cd llama.cpp && 
