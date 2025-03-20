@@ -20,12 +20,16 @@ Provide a detailed analysis including:
 4. Areas for improvement
 5. Key observations
 
+Patient prompt:
+{patient_prompt}
+
 Response to evaluate:
 {response}
 
 Format your response as JSON:
 {{
-    "Scoring Criteria and scoring": <score>,
+    "criteria": <criteria>,
+    "scoring": <score>,
     "explanation": "<detailed explanation>",
     "strengths": ["<strength1>", "<strength2>", ...],
     "improvements": ["<improvement1>", "<improvement2>", ...],

@@ -2,7 +2,7 @@
 import pandas as pd
 from datasets import load_dataset
 
-def load_test_data():
+def extract_test_split():
     """
     Load the ESConv dataset (test) from Hugging Face.
     
