@@ -4,8 +4,11 @@ import streamlit as st
 from prompts import criteria_based_evaluation_prompt
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-#from scripts.naive import model as naive_model
+# Add the project root to the path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from scripts.naive.model import main as naive_main
+#from scripts.etl.extract import load_test_data
+
 
 def initialize_session_states():
     if 'judge_model' not in st.session_state:
@@ -19,7 +22,7 @@ def initialize_session_states():
 
 
 # Model selection
-available_models = ["gpt-4", "gpt-3.5-turbo"]
+available_models = ["gpt-4", "gpt-3.5-turbo", naive_main]
 
 if 'api_key' not in st.session_state:
         st.session_state.api_key = None
@@ -80,7 +83,7 @@ def evaluation_by_criteria_ref_free():
             if eval_result:
                 # Display detailed evaluation
                 with st.expander(f"{cri.capitalize()} Analysis"):
-                    
+                    eval_result
                     # st.write(f"**Score:** {eval_result['score']}/5")
                     # st.write(f"**Detailed Explanation:** {eval_result['explanation']}")
                     
