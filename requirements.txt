@@ -2,6 +2,7 @@ accelerate==1.5.2
 datasets==3.4.1
 gguf==0.14.0
 huggingface-hub==0.29.3
+joblib==1.4.2
 langchain-community==0.3.18
 langchain-openai==0.3.6
 llama-cpp-python==0.3.8
