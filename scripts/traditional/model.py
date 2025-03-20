@@ -7,10 +7,20 @@ import numpy as np
 import sys
 import os
 import json
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
+import pickle
+
+# Handle potential import errors with scikit-learn
+ML_AVAILABLE = True
+try:
+    import joblib
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.naive_bayes import MultinomialNB
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.model_selection import train_test_split
+except ImportError as e:
+    print(f"Warning: Machine learning imports failed: {e}")
+    print("Running in fallback mode with rule-based classification only")
+    ML_AVAILABLE = False
 
 
 # Add the project root to the path
@@ -26,13 +36,16 @@ class HMMAdvisor:
     Tracks emotional states and problem types to provide relevant responses.
     """
 
-    def __init__(self):
-        """Sets up the advisor with dataset."""
-        # Load data
-        self.data = load_data()
+    def __init__(self, load_pretrained=True):
+        """Sets up the advisor with dataset or pre-trained models."""
+        # Only load data if we need to train models
+        if load_pretrained and os.path.exists('models/emotion_classifier.pkl'):
+            self.data = None  # Don't load data if not needed
+        else:
+            # Loading data for training
+            self.data = load_data()
+            print("Available columns:", self.data.columns.tolist())
         
-        print("Available columns:", self.data.columns.tolist())
-
         # Our states and categories
         self.emotions = ['anxiety', 'depression', 'sadness', 'anger', 'fear', 'happiness']
         self.problems = ['job crisis', 'ongoing depression', 'breakup with partner',
@@ -41,14 +54,14 @@ class HMMAdvisor:
         # Response types we'll use
         self.strategies = ['Question', 'Reflection', 'Suggestion', 'Information', 'Reassurance']
 
-        # Train our models
+        # Train or load our models
         self._train_classifiers()
 
         # Set up the HMM
         self._build_transition_matrix()
         self._build_emission_matrix()
 
-        # Set up our canned responses
+        # Setting up our canned responses
         self._create_response_templates()
 
         # Init tracking vars
@@ -57,12 +70,66 @@ class HMMAdvisor:
         self.last_strategy = None
 
     def _train_classifiers(self):
-        """Trains our emotion and problem classifiers from the dataset."""
-        # Convert the JSON in 'text' column to actual data
+        """Trains our emotion and problem classifiers from the dataset, or loads from serialized files."""
+        # Setting flag for ML availability
+        self.ml_models_ready = False
+        
+        # If ML libraries aren't available, skip training
+        if not ML_AVAILABLE:
+            print("ML libraries not available - using rule-based classification only")
+            return
+            
+        try:
+            # Check if serialized models exist
+            if os.path.exists('models/emotion_classifier.pkl') and os.path.exists('models/problem_classifier.pkl'):
+                try:
+                    # Load serialized models instead of retraining
+                    serializer = joblib if 'joblib' in sys.modules else pickle
+                    self.emotion_vectorizer = serializer.load('models/emotion_vectorizer.pkl')
+                    self.emotion_classifier = serializer.load('models/emotion_classifier.pkl')
+                    self.problem_vectorizer = serializer.load('models/problem_vectorizer.pkl')
+                    self.problem_classifier = serializer.load('models/problem_classifier.pkl')
+                    print("Loaded pre-trained models from disk")
+                    self.ml_models_ready = True
+                    return
+                except Exception as e:
+                    print(f"Error loading models: {e}")
+                    print("Falling back to training new models")
+                
+            # If models don't exist or couldn't be loaded, load data and train
+            parsed_df = self._parse_json_data()
+            
+            # Train emotion classifier
+            self.emotion_vectorizer, self.emotion_classifier = self._train_single_classifier(
+                parsed_df, 'situation', 'emotion_type', self.emotions, MultinomialNB()
+            )
+            
+            # Train problem classifier
+            self.problem_vectorizer, self.problem_classifier = self._train_single_classifier(
+                parsed_df, 'situation', 'problem_type', self.problems, RandomForestClassifier(n_estimators=100)
+            )
+            
+            # Serialize the models for future use
+            try:
+                os.makedirs('models', exist_ok=True)
+                serializer = joblib if 'joblib' in sys.modules else pickle
+                serializer.dump(self.emotion_vectorizer, 'models/emotion_vectorizer.pkl')
+                serializer.dump(self.emotion_classifier, 'models/emotion_classifier.pkl')
+                serializer.dump(self.problem_vectorizer, 'models/problem_vectorizer.pkl')
+                serializer.dump(self.problem_classifier, 'models/problem_classifier.pkl')
+                print("Models trained and serialized to disk")
+                self.ml_models_ready = True
+            except Exception as e:
+                print(f"Error saving models: {e}")
+        except Exception as e:
+            print(f"Error in training classifiers: {e}")
+            print("Using rule-based classification only")
+
+    def _parse_json_data(self):
+        """Parse the JSON in 'text' column to actual data."""
         parsed_data = []
         for _, row in self.data.iterrows():
             try:
-                # Parse the JSON string into a dictionary
                 if 'text' in row:
                     json_data = json.loads(row['text'])
                     parsed_data.append(json_data)
@@ -74,48 +141,29 @@ class HMMAdvisor:
         parsed_df = pd.DataFrame(parsed_data)
         print("Parsed columns:", parsed_df.columns.tolist())
         
-        # Now we can access the actual columns
-        situation_col = 'situation'
-        emotion_col = 'emotion_type'
-        problem_col = 'problem_type'
+        return parsed_df
+
+    def _train_single_classifier(self, df, feature_col, target_col, valid_labels, classifier_instance):
+        """Helper method to train a single classifier."""
+        # Extract features and target
+        X = df[feature_col].astype(str).fillna('') if feature_col in df.columns else pd.Series([''] * len(df))
+        y = df[target_col].astype(str).fillna('unknown') if target_col in df.columns else pd.Series(['unknown'] * len(df))
         
-        # For emotion classifier
-        X_emotion = parsed_df[situation_col].astype(str).fillna('') if situation_col in parsed_df.columns else pd.Series([''] * len(parsed_df))
-        y_emotion = parsed_df[emotion_col].astype(str).fillna('unknown') if emotion_col in parsed_df.columns else pd.Series(['unknown'] * len(parsed_df))
+        # Filter valid labels
+        mask = y.isin(valid_labels)
+        X_valid = X[mask]
+        y_valid = y[mask]
         
-        # Clean up the data - only use stuff we have labels for
-        mask_emotion = y_emotion.isin(self.emotions)
-        X_emotion_valid = X_emotion[mask_emotion]
-        y_emotion_valid = y_emotion[mask_emotion]
+        print(f"Training {target_col} classifier with {len(X_valid)} samples")
         
-        print(f"Training emotion classifier with {len(X_emotion_valid)} samples")
+        # Vectorize features
+        vectorizer = TfidfVectorizer(max_features=3000)
+        X_tfidf = vectorizer.fit_transform(X_valid)
         
-        # TF-IDF for the emotion classifier
-        self.emotion_vectorizer = TfidfVectorizer(max_features=3000)
-        X_emotion_tfidf = self.emotion_vectorizer.fit_transform(X_emotion_valid)
+        # Train classifier
+        classifier_instance.fit(X_tfidf, y_valid)
         
-        # NB works pretty well for text
-        self.emotion_classifier = MultinomialNB()
-        self.emotion_classifier.fit(X_emotion_tfidf, y_emotion_valid)
-        
-        # Now for problem classifier
-        X_problem = parsed_df[situation_col].astype(str).fillna('') if situation_col in parsed_df.columns else pd.Series([''] * len(parsed_df))
-        y_problem = parsed_df[problem_col].astype(str).fillna('unknown') if problem_col in parsed_df.columns else pd.Series(['unknown'] * len(parsed_df))
-        
-        # Same cleaning approach
-        mask_problem = y_problem.isin(self.problems)
-        X_problem_valid = X_problem[mask_problem]
-        y_problem_valid = y_problem[mask_problem]
-        
-        print(f"Training problem classifier with {len(X_problem_valid)} samples")
-        
-        # TF-IDF again
-        self.problem_vectorizer = TfidfVectorizer(max_features=3000)
-        X_problem_tfidf = self.problem_vectorizer.fit_transform(X_problem_valid)
-        
-        # RF usually beats NB for this task in my testing
-        self.problem_classifier = RandomForestClassifier(n_estimators=100)
-        self.problem_classifier.fit(X_problem_tfidf, y_problem_valid)
+        return vectorizer, classifier_instance
 
     def _build_transition_matrix(self):
         """Creates transition probs between emotional states."""
@@ -396,66 +444,121 @@ class HMMAdvisor:
 
     def detect_emotion(self, message):
         """Figure out the emotion using ML and keyword backups."""
-        try:
-            # Try ML first
-            message_vec = self.emotion_vectorizer.transform([message])
-            emotion = self.emotion_classifier.predict(message_vec)[0]
+        # Try ML if available and models are ready
+        if ML_AVAILABLE and hasattr(self, 'ml_models_ready') and self.ml_models_ready:
+            try:
+                message_vec = self.emotion_vectorizer.transform([message])
+                emotion = self.emotion_classifier.predict(message_vec)[0]
 
-            # If we got something valid, use it
-            if emotion in self.emotions:
-                return emotion
-        except:
-            pass  # ML stumbled, let's try keywords
-
-        # Old-school keyword matching as fallback
+                # If we got something valid, use it
+                if emotion in self.emotions:
+                    return emotion
+            except Exception as e:
+                print(f"ML emotion detection error: {e}")
+                # Continue to keyword fallback
+        
+        # Keyword matching (as fallback or primary if ML not available)
         message = message.lower()
 
-        # Check some obvious tells
-        if "happy" in message or "good" in message or "great" in message:
-            return "happiness"
-        if "sad" in message or "unhappy" in message or "crying" in message:
-            return "sadness"
-        if "angry" in message or "mad" in message or "frustrated" in message:
-            return "anger"
-        if "anxious" in message or "worried" in message or "stress" in message:
-            return "anxiety"
-        if "scared" in message or "afraid" in message or "terrified" in message:
-            return "fear"
-        if "depressed" in message or "hopeless" in message or "empty" in message:
-            return "depression"
+        # Define emotion keywords for better matching
+        emotion_keywords = {
+            'happiness': ["happy", "good", "great", "excellent", "joy", "excited", "delighted", "thrilled", "pleased"],
+            'sadness': ["sad", "unhappy", "crying", "tears", "grief", "blue", "down", "heartbroken", "upset"],
+            'anger': ["angry", "mad", "frustrated", "annoyed", "furious", "irritated", "pissed", "outraged", "hate"],
+            'anxiety': ["anxious", "worried", "stress", "nervous", "uneasy", "concerned", "panicked", "overthinking"],
+            'fear': ["scared", "afraid", "terrified", "frightened", "fearful", "horror", "dread", "panic"],
+            'depression': ["depressed", "hopeless", "empty", "worthless", "numb", "meaningless", "pointless"]
+        }
 
+        # Count keyword matches for each emotion
+        emotion_scores = {emotion: 0 for emotion in self.emotions}
+        
+        for emotion, keywords in emotion_keywords.items():
+            for keyword in keywords:
+                if keyword in message:
+                    emotion_scores[emotion] += 1
+        
+        # Get the emotion with the highest score
+        max_score = max(emotion_scores.values())
+        if max_score > 0:
+            # If there's a tie, prioritize more common emotions
+            max_emotions = [e for e, s in emotion_scores.items() if s == max_score]
+            if len(max_emotions) == 1:
+                return max_emotions[0]
+            else:
+                # Prioritize anxiety and depression as they're more common
+                for priority in ["anxiety", "depression", "sadness"]:
+                    if priority in max_emotions:
+                        return priority
+                return max_emotions[0]
+        
         # When all else fails, most people are anxious
         return "anxiety"
 
     def detect_problem(self, message):
         """Figure out the problem type using ML and keywords."""
-        try:
-            # ML approach first
-            message_vec = self.problem_vectorizer.transform([message])
-            problem = self.problem_classifier.predict(message_vec)[0]
+        # Try ML if available and models are ready
+        if ML_AVAILABLE and hasattr(self, 'ml_models_ready') and self.ml_models_ready:
+            try:
+                message_vec = self.problem_vectorizer.transform([message])
+                problem = self.problem_classifier.predict(message_vec)[0]
 
-            # If valid, run with it
-            if problem in self.problems:
-                return problem
-        except:
-            pass  # ML choked, let's try keywords
-
-        # Keyword fallback
+                # If valid, run with it
+                if problem in self.problems:
+                    return problem
+            except Exception as e:
+                print(f"ML problem detection error: {e}")
+                # Continue to keyword fallback
+        
+        # Define more comprehensive keyword sets for each problem type
         message = message.lower()
+        
+        problem_keywords = {
+            'job crisis': [
+                "job", "work", "career", "fired", "employer", "boss", "office", 
+                "workplace", "unemployed", "interview", "resume", "layoff", "promotion"
+            ],
+            'ongoing depression': [
+                "depressed", "depression", "therapy", "medication", "mental health", 
+                "psychiatrist", "psychologist", "hopeless", "empty", "worthless",
+                "counseling", "treatment"
+            ],
+            'breakup with partner': [
+                "breakup", "ex", "relationship", "partner", "boyfriend", "girlfriend", 
+                "husband", "wife", "divorce", "dating", "romance", "split", "dumped"
+            ],
+            'problems with friends': [
+                "friend", "friendship", "social", "betrayed", "trust", "bestie", 
+                "buddy", "group", "clique", "hanging out", "ghosted", "toxic"
+            ],
+            'academic pressure': [
+                "school", "college", "exam", "study", "class", "university", "grade", 
+                "professor", "teacher", "assignment", "homework", "degree", "graduate"
+            ]
+        }
 
-        # Check for obvious problem indicators
-        if any(word in message for word in ["job", "work", "career", "fired", "employer"]):
-            return "job crisis"
-        if any(word in message for word in ["depressed", "depression", "therapy", "medication"]):
-            return "ongoing depression"
-        if any(word in message for word in ["breakup", "ex", "relationship", "partner"]):
-            return "breakup with partner"
-        if any(word in message for word in ["friend", "friendship", "social", "betrayed"]):
-            return "problems with friends"
-        if any(word in message for word in ["school", "college", "exam", "study", "class"]):
-            return "academic pressure"
-
-        # Most common issue in my data
+        # Count keyword matches for each problem type
+        problem_scores = {problem: 0 for problem in self.problems}
+        
+        for problem, keywords in problem_keywords.items():
+            for keyword in keywords:
+                if keyword in message:
+                    problem_scores[problem] += 1
+        
+        # Get the problem with the highest score
+        max_score = max(problem_scores.values())
+        if max_score > 0:
+            max_problems = [p for p, s in problem_scores.items() if s == max_score]
+            if len(max_problems) == 1:
+                return max_problems[0]
+            else:
+                # In case of a tie, prioritize based on common prevalence
+                for priority in ["ongoing depression", "job crisis", "breakup with partner"]:
+                    if priority in max_problems:
+                        return priority
+                return max_problems[0]
+        
+        # Most common issue in our data if no keywords match
         return "ongoing depression"
 
     def update_emotional_state(self, detected_emotion):
