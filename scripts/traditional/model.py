@@ -99,12 +99,12 @@ class HMMAdvisor:
             # If models don't exist or couldn't be loaded, load data and train
             parsed_df = self._parse_json_data()
             
-            # Train emotion classifier
+            # Training emotion classifier
             self.emotion_vectorizer, self.emotion_classifier = self._train_single_classifier(
                 parsed_df, 'situation', 'emotion_type', self.emotions, MultinomialNB()
             )
             
-            # Train problem classifier
+            # Training problem classifier
             self.problem_vectorizer, self.problem_classifier = self._train_single_classifier(
                 parsed_df, 'situation', 'problem_type', self.problems, RandomForestClassifier(n_estimators=100)
             )
@@ -126,7 +126,7 @@ class HMMAdvisor:
             print("Using rule-based classification only")
 
     def _parse_json_data(self):
-        """Parse the JSON in 'text' column to actual data."""
+        """Parsing the JSON in 'text' column to actual data"""
         parsed_data = []
         for _, row in self.data.iterrows():
             try:
@@ -137,7 +137,7 @@ class HMMAdvisor:
                 print(f"Error parsing row: {e}")
                 continue
         
-        # Create a new DataFrame with the parsed data
+        # Creating a new DataFrame with the parsed data
         parsed_df = pd.DataFrame(parsed_data)
         print("Parsed columns:", parsed_df.columns.tolist())
         
@@ -166,7 +166,7 @@ class HMMAdvisor:
         return vectorizer, classifier_instance
 
     def _build_transition_matrix(self):
-        """Creates transition probs between emotional states."""
+        """Creating a transition probs between emotional states."""
         n_states = len(self.emotions)
         self.transition_matrix = np.zeros((n_states, n_states))
 
@@ -183,7 +183,7 @@ class HMMAdvisor:
 
     def _build_emission_matrix(self):
         """
-        Creates strategy distribution matrices for each emotion-problem combo.
+        Createing a strategy distribution matrices for each emotion-problem combo.
         This helps pick good strategies based on emotional state.
         """
         # Based on some CBT literature and my own experience
@@ -257,7 +257,7 @@ class HMMAdvisor:
         }
 
     def _create_response_templates(self):
-        """Sets up response templates - I've collected these from various sources."""
+        """Setting up response templates"""
         # Main templates by strategy type
         self.templates = {
             'Question': [
@@ -274,16 +274,16 @@ class HMMAdvisor:
                 "Sounds like you're feeling [EMOTION] about this whole thing.",
                 "I can tell this has been rough on you.",
                 "You're dealing with some big challenges right now.",
-                "That must be really [EMOTION] to go through.",
-                "I hear that this [PROBLEM] has hit you hard.",
+                "That must be really [EMOTION] to go through",
+                "I hear that this [PROBLEM] has hit you hard",
                 "Makes sense you'd feel that way with what you're facing.",
-                "This situation has clearly stirred up a lot for you.",
-                "You've had a lot on your plate lately."
+                "This situation has clearly stirred up a lot for you."
+                
             ],
             'Suggestion': [
                 "Maybe try breaking this down into smaller bits?",
                 "Could be worth talking to someone who specializes in this.",
-                "Sometimes a daily routine helps when things get crazy.",
+                "Sometimes a daily routine helps when things get crazy",
                 "Don't forget to take care of yourself during stressful times.",
                 "Have you tried writing down your thoughts?",
                 "Setting tiny goals sometimes helps get momentum going.",
@@ -613,7 +613,7 @@ class HMMAdvisor:
                 temp_dist = {k: v/total for k, v in temp_dist.items()}
                 strategy_dist = temp_dist
 
-        # Pick based on our weighted distribution
+        # Pick ing based on our weighted distribution
         strategies = list(strategy_dist.keys())
         probs = [strategy_dist[s] for s in strategies]
 
