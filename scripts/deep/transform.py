@@ -1,15 +1,6 @@
 import json
 
-def transform_to_openai(json_file_path, output_file_path):
-    """
-    Transforms a JSON data file into a ShareGPT-formatted dataset.
-
-    Args:
-        json_file_path (str): Path to the input JSON file.
-        output_file_path (str): Path to the output ShareGPT-formatted JSON file.
-    """
-
-    instruction = """You are an emotional support counselor specializing in Cognitive Behavioral Therapy (CBT). Your role is to provide empathetic and supportive guidance to users, helping them understand and manage their thoughts, feelings, and behaviors. You will use CBT techniques to help users identify negative thought patterns, challenge them, and develop healthier coping mechanisms.
+SYSTEM_PROMPT = """You are an emotional support counselor specializing in Cognitive Behavioral Therapy (CBT). Your role is to provide empathetic and supportive guidance to users, helping them understand and manage their thoughts, feelings, and behaviors. You will use CBT techniques to help users identify negative thought patterns, challenge them, and develop healthier coping mechanisms.
 
 **Important Guidelines:**
 
@@ -61,6 +52,17 @@ def transform_to_openai(json_file_path, output_file_path):
 
 By adhering to these guidelines, you can effectively provide emotional support and CBT-based guidance to users, helping them improve their emotional well-being.
 """
+
+def transform_to_openai(json_file_path, output_file_path):
+    """
+    Transforms a JSON data file into a ShareGPT-formatted dataset.
+
+    Args:
+        json_file_path (str): Path to the input JSON file.
+        output_file_path (str): Path to the output ShareGPT-formatted JSON file.
+    """
+
+    instruction = SYSTEM_PROMPT
 
     with open(json_file_path, 'r', encoding='utf-8') as f:
         data = [json.loads(line) for line in f]

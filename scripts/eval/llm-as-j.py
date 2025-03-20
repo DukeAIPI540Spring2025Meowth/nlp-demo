@@ -4,9 +4,14 @@ import streamlit as st
 from prompts import criteria_based_evaluation_prompt
 import sys
 import os
+from llama_cpp import Llama
+from dotenv import load_dotenv
+
 # Add the project root to the path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-from scripts.naive.model import main as naive_main
+from scripts.naive.model import generation
+from scripts.traditional.model import HMMAdvisor
+from scripts.deep.transform import SYSTEM_PROMPT
 #from scripts.etl.extract import load_test_data
 
 
@@ -20,9 +25,37 @@ def initialize_session_states():
     if 'rbe_response' not in st.session_state:
         st.session_state.rbe_response = ""
 
+hmm_advisor = HMMAdvisor()
+
+llm = Llama.from_pretrained(
+        repo_id="haran-nallasivan/meowth-nlp-demo-0.1_llama-3.2-3b-instruct_q5_k_m_gguf",
+        filename="model.gguf",
+        verbose=False,
+        n_ctx=2048, 
+        n_threads=8,
+        n_gpu_layers=0,  # Disable Metal GPU acceleration
+        offload_kqv=True  # Optimize CPU memory usage
+    )
+
+def generate_naive(messages):
+    return generation(messages)
+
+def generate_traditional(messages):
+    return hmm_advisor.generate_response(messages[-1])
+
+def generate_deep(messages):
+    messages_with_system_prompt = [SYSTEM_PROMPT]
+    messages_with_system_prompt.extend(messages)
+    response = llm.create_chat_completion(
+        messages=messages_with_system_prompt,
+        temperature=0.7,
+        max_tokens=100,
+        stop=["</s>"],
+    )
+    return response['choices'][0]['message']['content']
 
 # Model selection
-available_models = ["gpt-4", "gpt-3.5-turbo", naive_main]
+available_models = [generate_naive, generate_traditional, generate_deep]
 
 if 'api_key' not in st.session_state:
         st.session_state.api_key = None
@@ -31,27 +64,27 @@ if 'api_key' not in st.session_state:
 if st.session_state.api_key:
     client = OpenAI(api_key=st.session_state.api_key)
 
-def get_response(user_prompt, model, json_format=True):
-    # Initialize OpenAI client
-    if st.session_state.api_key:
-        client = OpenAI(api_key=st.session_state.api_key)
+# def get_response(user_prompt, model, json_format=True):
+#     # Initialize OpenAI client
+#     if st.session_state.api_key:
+#         client = OpenAI(api_key=st.session_state.api_key)
 
-        if json_format:
-            completion = client.chat.completions.create(
-                model=model,
-                messages=[{'role': 'user', 'content': user_prompt}],
-                response_format={"type":"json_object"}
-            )
-            return json.loads(completion.choices[0].message.content)
-        else:
-            completion = client.chat.completions.create(
-                model=model,
-                messages=[{'role': 'user', 'content': user_prompt}],
-            )
-            return completion.choices[0].message.content
+#         if json_format:
+#             completion = client.chat.completions.create(
+#                 model=model,
+#                 messages=[{'role': 'user', 'content': user_prompt}],
+#                 response_format={"type":"json_object"}
+#             )
+#             return json.loads(completion.choices[0].message.content)
+#         else:
+#             completion = client.chat.completions.create(
+#                 model=model,
+#                 messages=[{'role': 'user', 'content': user_prompt}],
+#             )
+#             return completion.choices[0].message.content
         
-    else:
-         st.error("Please provide API Key.")
+#     else:
+#          st.error("Please provide API Key.")
 
 def evaluation_by_criteria_ref_free():
     
