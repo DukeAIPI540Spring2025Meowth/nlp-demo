@@ -2,15 +2,13 @@
 # It provides empathetic, supportive responses using a locally fine-tuned Llama LLM, with an optional
 # refinement and evaluation step performed by an external LLM ("Judge") powered by OpenAI. Users
 # can select different visual themes ("moods") that dynamically change the app's color scheme, input
-# API keys for OpenAI and ElevenLabs via a sidebar, and interact through text-based chat inputs.
-# The assistant returns original and optionally refined responses, a numeric evaluation score,
-# and provides a high-quality audio playback of the refined response using ElevenLabs TTS.
+# API keys for OpenAI via a sidebar, and interact through text-based chat inputs.
+# The assistant returns original and optionally refined responses and a numeric evaluation score.
 # Important ethical disclaimers and guidance on the responsible use of this experimental tool
 # are provided clearly throughout the user interface.
 
 
 import streamlit as st
-import base64
 
 # Import custom LLM modules ---
 from streamlit_llm_utils import (
@@ -19,7 +17,6 @@ from streamlit_llm_utils import (
     generate_main_response,
     judge_refine_and_score
 )
-from streamlit_elevenlabs_utils import speak_text
 
 # Define mood-based themes, each with colors carefully selected to reflect specific emotional tones.
 MOOD_COLORS = {
@@ -89,17 +86,6 @@ def set_mood_style(mood: str):
         unsafe_allow_html=True
     )
 
-# A helper to auto-play audio 
-def autoplay_audio(audio_bytes: bytes):
-    b64 = base64.b64encode(audio_bytes).decode()
-    audio_html = f"""
-        <audio autoplay="true" controls="true" style="margin-top:1rem;">
-            <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
-        </audio>
-    """
-    st.markdown(audio_html, unsafe_allow_html=True)
-
-
 def main():
     # Let user pick a mood from the sidebar, then apply the style
     st.sidebar.header("Mood Theme")
@@ -120,11 +106,10 @@ def main():
     st.write(
         "Welcome to **MindHeal Assistant**, an empathetic virtual assistant powered by a carefully fine-tuned language model. "
         "It provides thoughtful, supportive, and mental-health-oriented responses to your inquiries. "
-        "Additionally, you can enable an optional ‘Judge’ LLM, powered by OpenAI, to refine these responses further and provide a quality evaluation.\n\n"
+        "Additionally, you can enable an optional 'Judge' LLM, powered by OpenAI, to refine these responses further and provide a quality evaluation.\n\n"
         "**Key Features:**\n"
         "1. **Original & Refined Responses:** Compare the initial response from the primary LLM with the professionally refined alternative.\n"
-        "2. **Quality Score:** Receive a numeric rating (1–10) assessing how effectively the initial response addresses your input.\n"
-        "3. **Text-to-Speech:** Listen to the refined responses through high-quality audio provided by ElevenLabs TTS.\n\n"
+        "2. **Quality Score:** Receive a numeric rating (1–10) assessing how effectively the initial response addresses your input.\n\n"
         "Please note: This virtual assistant is **not** a substitute for professional therapeutic services."
     )
 
@@ -132,14 +117,6 @@ def main():
     # Sidebar configuration
 
     st.sidebar.header("Configuration")
-
-    # ElevenLabs key
-    st.session_state.setdefault("eleven_labs_api_key", "")
-    st.session_state.eleven_labs_api_key = st.sidebar.text_input(
-        "Eleven Labs API Key",
-        type="password",
-        value=st.session_state.eleven_labs_api_key
-    )
 
     # OpenAI key
     st.session_state.setdefault("openai_api_key", "")
@@ -215,15 +192,10 @@ def main():
         elif judge_enabled and not st.session_state.judge_llm:
             st.warning("Judge enabled but OpenAI API key missing or invalid.")
 
-        # TTS for refined or original response (they are the same if judge off)
-        voice_id = "BL7YSL1bAkmW8U0JnU8o"
-        audio_bytes = speak_text(refined_response, voice_id=voice_id)
-
         # Store assistant message conditionally
         assistant_message = {
             "role": "assistant",
-            "content": main_response,
-            "audio": audio_bytes
+            "content": main_response
         }
 
         # Only add refined response and score if judge is enabled
@@ -253,9 +225,6 @@ def main():
                         st.markdown("**Refined Response:**")
                         st.write(msg["refined"])
                         st.write(f"**Judge's Score:** {msg['score']}")
-
-                    if msg.get("audio"):
-                        autoplay_audio(msg["audio"])
 
 
     # Footer / Additional Info 
