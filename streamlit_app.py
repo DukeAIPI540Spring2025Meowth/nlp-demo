@@ -118,7 +118,7 @@ def main():
     )
 
     st.write(
-        "Welcome to **MindCare Assistant**, an empathetic virtual assistant powered by a carefully fine-tuned language model (LLM). "
+        "Welcome to **MindCare Assistant**, an empathetic virtual assistant powered by a carefully fine-tuned language model. "
         "It provides thoughtful, supportive, and mental-health-oriented responses to your inquiries. "
         "Additionally, you can enable an optional ‘Judge’ LLM, powered by OpenAI, to refine these responses further and provide a quality evaluation.\n\n"
         "**Key Features:**\n"

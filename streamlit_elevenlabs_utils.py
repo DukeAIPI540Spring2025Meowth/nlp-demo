@@ -10,14 +10,17 @@
 import os
 import streamlit as st
 from elevenlabs import ElevenLabs
+from typing import Optional 
 
-def get_elevenlabs_client() -> ElevenLabs:
+def get_elevenlabs_client() -> Optional[ElevenLabs]:
     """
-    Create an ElevenLabs client using the key in st.session_state 
+    Create an ElevenLabs client using the API key from st.session_state.
+    Returns None if no key is provided.
     """
     api_key = st.session_state.get("eleven_labs_api_key", "")
     if not api_key:
-        st.warning("No Eleven Labs API key found. Please provide it in the sidebar.")
+        st.warning("No ElevenLabs API key found. Text-to-speech will be disabled.")
+        return None
     return ElevenLabs(api_key=api_key)
 
 def speak_text(text, voice_id):
@@ -30,24 +33,21 @@ def speak_text(text, voice_id):
     """
     text = text.strip()
     if not text:
-        return b""  # Return empty bytes if no text
+        return b""  # No audio for empty text
 
     client = get_elevenlabs_client()
+    if not client:
+        return b""  # Gracefully handle missing client (no API key provided)
+
     try:
-        # This call returns a generator of audio chunks
         audio_generator = client.text_to_speech.convert(
             text=text,
             voice_id=voice_id,
             model_id="eleven_multilingual_v2",
             output_format="mp3_44100_128"
         )
-
-        # Manually concatenate chunks into a single bytes object
-        audio_bytes = b""
-        for chunk in audio_generator:
-            audio_bytes += chunk
-
-        return audio_bytes  
+        audio_bytes = b"".join(audio_generator)
+        return audio_bytes
     except Exception as e:
-        st.error(f"Error calling Eleven Labs TTS: {e}")
+        st.error(f"Error during ElevenLabs TTS conversion: {e}")
         return b""
