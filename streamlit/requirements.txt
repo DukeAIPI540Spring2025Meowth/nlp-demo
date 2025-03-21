@@ -1,0 +1,5 @@
+elevenlabs==1.54.0
+huggingface-hub==0.29.3
+llama-cpp-python==0.3.8
+openai==1.63.2
+streamlit==1.43.2
