@@ -13,6 +13,25 @@ This project implements three approaches to emotional support conversations:
 
 The application is deployed on Digital Ocean: [https://mindheal-assistant-7kfky.ondigitalocean.app/](https://mindheal-assistant-7kfky.ondigitalocean.app/)
 
+## Novelty and Contribution
+
+- Unlike existing chatbot-based emotional support systems, our approach integrates three distinct methodologies to compare and contrast effectiveness.
+- We introduce a new LLM-based evaluation framework using an LLM as a judge to provide structured scoring for emotional support conversations.
+- Our HMM-based emotion tracking model enhances structured dialogue generation in a way that hasn't been widely explored for emotional support systems.
+
+## Dataset
+We used the [esconv dataset](https://huggingface.co/datasets/giliit/esconv), a crowd-sourced collection of emotional support conversations between therapists and patients.
+
+### Ethical Considerations on the Dataset
+The **esconv dataset** consists of anonymized conversations between therapists and patients. While it provides a valuable resource for studying emotional support strategies, several ethical considerations must be addressed:
+- **Bias and Representation**: Since the dataset is anonymized, we do not have demographic information on the participants. This means we cannot ensure that it represents diverse populations across gender, race, socioeconomic status, or cultural backgrounds.
+- **Therapeutic Quality**: The dataset captures a range of therapist responses, but without knowing the professional qualifications of the individuals involved, we cannot verify whether all responses align with best practices in mental health support.
+- **Potential for Misuse**: As the dataset is used to train AI models, there is a risk that models may generate responses that **appear empathetic but lack true understanding**, which could be harmful in real-world mental health applications.
+- **Limitations in Crisis Scenarios**: The dataset does not include structured intervention for crisis situations such as imminent self-harm or suicide. Therefore, models trained on this dataset should not be relied upon for urgent mental health support.
+
+We acknowledge these challenges and emphasize that **MindHeal Assistant is an educational tool** rather than a replacement for professional mental health services. We encourage future work on datasets that include **more structured, clinically verified responses** while ensuring inclusivity and representation.
+
+
 ## Running the Streamlit App
 
 ### Local Setup
@@ -62,7 +81,13 @@ docker login
 docker push haranku16/mindheal-assistant:tagname
 ```
 
-### Features
+### API Key Requirements
+
+- The OpenAI API key is required only if you want to use the Judge evaluation system. You can obtain an API key from: https://platform.openai.com/signup
+- The ElevenLabs API key is required only if you want to enable text-to-speech (TTS) functionality. You can obtain an API key from: https://elevenlabs.io/
+- If no API keys are provided, the app will still function, but the Judge system and TTS features will be disabled.
+
+## Features
 - Speech-to-text capability (requires API key)
 - Response revision through ChatGPT (requires API key)
 - Interactive conversation interface
@@ -165,21 +190,73 @@ python evaluate.py
   5. Clinical Safety (1-5): Detection of risk factors and implementation of proper protocols
 - Compares performance across all three approaches (naive, traditional, and deep learning)
 
+### Results and Conclusion
+
+| Metric                | Naive  | ML    | NN    |
+|----------------------|--------|-------|-------|
+| **Technical Accuracy** | 3.515  | 2.465 | 2.445 |
+| **Structural Adherence** | 1.78   | 1.085 | 1.12  |
+| **Empathetic Tone** | 4.275  | 3.275 | 3.45  |
+| **Intervention Depth** | 2.475  | 1.66  | 1.66  |
+| **Clinical Safety** | 2.865  | 2.055 | 2.12  |
+
+### Explanation of Results:
+- **Naive Approach performed best in technical accuracy and empathetic tone**, likely due to the foundation model's general-purpose conversational ability.
+- **ML (HMM-based) and NN struggled with technical accuracy**, potentially due to difficulty in mapping structured techniques to responses.
+- **Structural adherence was low across all methods**, with ML and NN slightly improving over the naive approach.
+- **Empathy scores were highest for the naive approach**, but this could be due to **a lack of structured emotional support strategies**.
+- **Clinical safety scores were relatively low**, indicating that **no approach was fully adept at risk detection** for sensitive topics like suicide intervention.
+
+## Ethical Considerations
+This application is designed for educational purposes and should not replace professional mental health services. The responses generated are based on machine learning models and may not always provide appropriate or helpful guidance. Users should seek professional help for serious mental health concerns.
+
+The finetuned and HMM approaches reflect biases inherent in the dataset. The dataset is anonymized, meaning the demographic diversity of therapists and patients is unknown. Consequently, the model may exhibit biases present in the original dataset.
+
+This system does not store conversations, and any API keys provided are used only for the specified services during the active session.
+
+## Presentation
+For a detailed project overview, refer to our [presentation](https://docs.google.com/presentation/d/14s7PdyqKt8x5M0Cs7gqhqigjk0nqaL-D7-k_5IybErw/edit?usp=sharing).
+
+## Citation
+<a id="1">[1]</a> Liu, et al. (2021). [Toward Emotional Support Dialog Systems.](https://arxiv.org/abs/2106.01144) ACL.
+
 ### Dataset
 We used the [esconv dataset](https://huggingface.co/datasets/giliit/esconv), a crowd-sourced collection of emotional support conversations between therapists and patients.
 
-## Ethical Considerations
 
-This application is designed for educational purposes and should not replace professional mental health services. The responses generated are based on machine learning models and may not always provide appropriate or helpful guidance. Users should seek professional help for serious mental health concerns.
 
-Because the finetuning and HMM approaches utilize the esconv dataset, they will reflect inherent biases within the dataset. Because the conversations are anonymized, we do not know the demographics of the therapists and patients whose conversations have been recorded. As a result, we cannot know if the dataset contains a diverse population of both therapists and patients across protected characteristics under federal law.
 
-The system does not store conversations, and any API keys provided by users are only used for the specified services during the active session.
 
-## Presentation
 
-For more information, check our [presentation](https://docs.google.com/presentation/d/14s7PdyqKt8x5M0Cs7gqhqigjk0nqaL-D7-k_5IybErw/edit?usp=sharing).
 
-## Citation
 
-<a id="1">[1]</a> Liu, et al. (2021). [Toward Emotional Support Dialog Systems.](https://arxiv.org/abs/2106.01144) ACL.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
