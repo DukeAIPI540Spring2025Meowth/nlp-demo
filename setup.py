@@ -1,1 +1,0 @@
-# Setup script to perform ETL and train the traditional model

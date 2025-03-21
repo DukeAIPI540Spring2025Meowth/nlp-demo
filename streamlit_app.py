@@ -1,4 +1,4 @@
-# This Streamlit script creates a mental health-oriented virtual assistant named "MindCare Assistant".
+# This Streamlit script creates a mental health-oriented virtual assistant named "MindHeal Assistant".
 # It provides empathetic, supportive responses using a locally fine-tuned Llama LLM, with an optional
 # refinement and evaluation step performed by an external LLM ("Judge") powered by OpenAI. Users
 # can select different visual themes ("moods") that dynamically change the app's color scheme, input
@@ -106,7 +106,7 @@ def main():
     mood_choice = st.sidebar.selectbox("Select a mood theme:", list(MOOD_COLORS.keys()))
     set_mood_style(mood_choice)
 
-    st.title("MindCare Assistant: Response Refinement & Evaluation")
+    st.title("MindHeal Assistant: Response Refinement & Evaluation")
 
     st.markdown(
         "**Disclaimer:** This application is strictly for **informational and educational purposes only**. "
@@ -118,7 +118,7 @@ def main():
     )
 
     st.write(
-        "Welcome to **MindCare Assistant**, an empathetic virtual assistant powered by a carefully fine-tuned language model. "
+        "Welcome to **MindHeal Assistant**, an empathetic virtual assistant powered by a carefully fine-tuned language model. "
         "It provides thoughtful, supportive, and mental-health-oriented responses to your inquiries. "
         "Additionally, you can enable an optional ‘Judge’ LLM, powered by OpenAI, to refine these responses further and provide a quality evaluation.\n\n"
         "**Key Features:**\n"
