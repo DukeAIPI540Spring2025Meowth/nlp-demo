@@ -40,25 +40,3 @@ For example,
     "Clinical Safety": 2
 }}
 """
-    # "explanation": "<detailed explanation>",
-    # "strengths": ["<strength1>", "<strength2>", ...],
-    # "improvements": ["<improvement1>", "<improvement2>", ...],
-    # "observations": "<key observations>"
-
-
-# reference_based_eval_prompt = """Compare the following model response to the reference answer:
-# Reference: {reference_answer}
-# Response: {model_response}
-
-# Evaluate the response based on:
-# 1. Factual accuracy compared to reference. Provide a score (0-10)
-# 2. Coverage of key points
-# 3. Any incorrect or missing information
-
-
-# Format your response as JSON:
-# {{
-#     "score": <score>,
-#     "explanation": "<detailed explanation>",
-# }}"""
-

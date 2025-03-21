@@ -20,6 +20,9 @@ load_dotenv()
 class Evaluator:
 
     def __init__(self):
+        """
+        Initializes the Evaluator class, loading the necessary models for evaluation.
+        """
         # Initialize models
         self.hmm_advisor = HMMAdvisor()
 
@@ -44,12 +47,39 @@ class Evaluator:
         
     # Define model generation functions
     def generate_naive(self, messages):
+        """
+        Generates a response using the naive generation model.
+
+        Args:
+            messages (list): A list of message dictionaries containing the conversation history.
+
+        Returns:
+            str: The generated response from the naive model.
+        """
         return naive_generation(messages)
 
     def generate_traditional(self, messages):
+        """
+        Generates a response using the traditional HMM-based model.
+
+        Args:
+            messages (list): A list of message dictionaries containing the conversation history.
+
+        Returns:
+            str: The generated response from the traditional model.
+        """
         return self.hmm_advisor.respond(messages[-1]['content'])[0]
     
     def generate_base_llma(self, messages):
+        """
+        Generates a response using the base Llama model.
+
+        Args:
+            messages (list): A list of message dictionaries containing the conversation history.
+
+        Returns:
+            str: The generated response from the base Llama model.
+        """
         messages_with_system_prompt = [{
             'role': 'system',
             'content': SYSTEM_PROMPT
@@ -64,6 +94,15 @@ class Evaluator:
         return response['choices'][0]['message']['content']
     
     def generate_deep(self, messages):
+        """
+        Generates a response using the deep learning Llama model.
+
+        Args:
+            messages (list): A list of message dictionaries containing the conversation history.
+
+        Returns:
+            str: The generated response from the deep learning model.
+        """
         messages_with_system_prompt = [{
             'role': 'system',
             'content': SYSTEM_PROMPT
@@ -78,6 +117,16 @@ class Evaluator:
         return response['choices'][0]['message']['content']
 
     def evaluation_by_criteria_ref_free(self, prompt, ground_truth_response):
+        """
+        Evaluates the model responses based on the provided prompt and ground truth response.
+
+        Args:
+            prompt (str): The user prompt to evaluate.
+            ground_truth_response (str): The expected correct response for comparison.
+
+        Returns:
+            dict: A dictionary containing evaluation results for each model.
+        """
         # Model selection
         available_models = [self.generate_naive, self.generate_base_llma, self.generate_deep, self.generate_traditional]
         results = {}
@@ -93,19 +142,6 @@ class Evaluator:
             eval_prompt = criteria_based_evaluation_prompt.format(patient_prompt=prompt, ground_truth_response=ground_truth_response, response=response)
             eval_result = self.generate_naive([{"role": "user", "content": eval_prompt}])
             results[model.__name__] = json.loads(eval_result)
-
-            # results[model.__name__] = {}
-            # for cri in criteria_list:
-            #     eval_prompt = criteria_based_evaluation_prompt.format(patient_prompt=prompt, criteria=cri, response=response)
-            #     eval_result = model([{"role": "user", "content": eval_prompt}])
-            #     if eval_result:
-            #         results[model.__name__][cri] = eval_result
-            #         print(f"Criteria: {cri}")
-            #         print(f"Score: {eval_result.get('score', 'N/A')}/5")
-            #         print(f"Explanation: {eval_result.get('explanation', 'N/A')}")
-            #         print("\n")
-            #     else:
-            #         print(f"Failed to evaluate {cri} for model {model.__name__}.\n")
 
         return results
 
@@ -150,6 +186,10 @@ def average_evaluation_scores(evaluation_results):
     return average_scores
 
 def main():
+    """
+    Main function to execute the evaluation process.
+    It extracts the test split, transforms the data, and evaluates the models.
+    """
     # Load the dataset and transform it
     extract_test_split()
     input_file = "esconv/test.json"  # Assuming this is the path to the original dataset
@@ -188,11 +228,6 @@ def main():
     print(results)
     print('\n')
     print(average_evaluation_scores(results))
-    # Average the results (assuming eval_result is a list of scores)
-    #average_results = {key: sum(result[key] for result in results) / len(results) for key in results[0].keys()}
-
-    #print("Average Evaluation Results:")
-    #print(json.dumps(average_results, indent=2))
 
 if __name__ == "__main__":
     main()
